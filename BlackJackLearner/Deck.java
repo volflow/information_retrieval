@@ -11,6 +11,7 @@ public class Deck {
                     cards.add(new Card(j, i));
                 }
             }
+            shuffleDeck();
         }
     }
 
@@ -26,6 +27,7 @@ public class Deck {
         while (cards.size() > 0) {
             newRandCards.add(this.takeRandomCard());
         }
+        this.cards = new ArrayList<Card>(newRandCards);
     }
 
     public Card peekCard() {
@@ -43,8 +45,8 @@ public class Deck {
     }
 
     public Card takeRandomCard() {
-        Random rand = new Random();
-        int n = rand.nextInt(cards.size()-1);
+        Random rand = new Random(System.nanoTime());
+        int n = rand.nextInt(cards.size());
         return throwCard(n);
     }
 }

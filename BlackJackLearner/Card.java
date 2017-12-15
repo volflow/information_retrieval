@@ -10,6 +10,7 @@ public class Card {
         }
 
         public static CardType getType(int card) {
+            card = card % 4;
             if (card == 0) return CLUB;
             if (card == 1) return DIAMOND;
             if (card == 2) return HEART;
@@ -48,8 +49,14 @@ public class Card {
     private final int value;
     private final CardType suite;
 
+    private int bound(int score) {
+        if (score < 1) return 1;
+        if (score > 13) return (score % 14);
+        return score;
+    }
+
     public Card(int cardIndex, int suite) {
-        this.value = scoreSystem(cardIndex);
+        this.value = bound(cardIndex);
         this.suite = CardType.getType(suite);
     }
 
@@ -58,7 +65,7 @@ public class Card {
     }
 
     public int getValue() {
-        return this.value;
+        return scoreSystem(this.value);
     }
 
     public CardType getSuite() {

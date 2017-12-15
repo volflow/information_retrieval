@@ -5,7 +5,7 @@ public class Player {
     private int cardVal;
     private boolean busted;
     private final String name;
-    private List<Card> cards;
+    public List<Card> cards;
     private boolean folded;
     private boolean iWon = false;
 
@@ -18,9 +18,7 @@ public class Player {
         this.busted = false;
         this.name = name;
         this.cards = new ArrayList<Card>();
-        for (int i = 0; i < numCardOption; i++) {
-            this.cards.add(deck.takeTopCard());
-        }
+        this.folded = false;
     }
 
     public int cardNum() {
@@ -41,20 +39,27 @@ public class Player {
         this.cardVal = overall;
         if (overall > 21) {
             this.busted = true;
-            this.requestFold();
+            this.folded = true;
         }
         else if (overall == 21) {
-            this.requestFold();
+            this.folded = true;
             iWon = true;
         }
     }
 
+    public String getName() {
+        return this.name;
+    }
+
     public int hitPlayer(Deck deck) {
-        Card c = deck.takeTopCard();
-        cards.add(c);
-        int overall = this.cardVal + c.getValue();
-        this.runGame(overall);
-        return this.cardVal;
+        if (!this.hasFolded()) {
+            Card c = deck.takeTopCard();
+            cards.add(c);
+            int overall = this.cardVal + c.getValue();
+            this.runGame(overall);
+            return this.cardVal;
+        }
+        return 0;
     }
 
     public boolean hasFolded() {
@@ -63,9 +68,9 @@ public class Player {
 
     public void requestFold() {
         if (!this.hasFolded()) {
-            Scanner in = new Scanner(System.in);
-            String response = in.nextLine();
-            if (response.equals("y")) this.folded = true;
+            if (this.cardScore() > 15) {
+                this.folded = true;
+            }
         }
     }
 }

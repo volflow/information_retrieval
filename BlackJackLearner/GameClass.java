@@ -1,10 +1,14 @@
-
 import java.lang.*;
 import java.util.*;
 
 public class GameClass {
     private ArrayList<Player> players = new ArrayList<>();
     private Player winner;
+    private boolean tookAnother;
+    private int initialScore;
+
+    public int getInitialScore() { return initialScore;}
+    public boolean houseTookAnother() {return tookAnother;}
 
     public ArrayList<Player> getPlayers() {
         return players;
@@ -18,7 +22,7 @@ public class GameClass {
         return winner;
     }
 
-    public GameClass (String command) {
+    public GameClass (DeepLearner myChamp) {
         Deck texasHigh = new Deck();
         Dealer house = new Dealer(texasHigh, 2, false);
         Player me = house.allowEntry("me", 2, texasHigh);
@@ -29,14 +33,23 @@ public class GameClass {
         me.hitPlayer(texasHigh);
         house.hitPlayer(texasHigh);
 
+        initialScore = house.cardScore();
          while (!me.hasFolded()) {
              me.hitPlayer(texasHigh);
-             house.requestFold();
+             me.requestFold();
          }
+
+        while (!house.hasFolded()) {
+            house.hitPlayer(texasHigh);
+            house.requestFold();
+        }
+
+         if (house.cards.size() > 2) {
+             tookAnother = true;
+         } else tookAnother = false;
 
          winner = house.whoWon(me);
 
-        System.out.println(winner);
+         System.out.println(winner.getName());
         }
     }
-}

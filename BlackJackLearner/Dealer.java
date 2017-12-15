@@ -18,6 +18,17 @@ public class Dealer extends Player {
     }
 
     public Player whoWon(Player p1) {
+        if (this.cardScore() > 21) {
+            if (p1.cardScore() > 21) {
+                return (new Player("No-one wins", 2, (new Deck())));
+            } else {
+                return p1;
+            }
+        } else {
+            if (p1.cardScore() > 21) {
+                return this;
+            }
+        }
         if (this.cardScore() > p1.cardScore()) {
             return this;
         }
@@ -25,15 +36,21 @@ public class Dealer extends Player {
             return p1;
 
         }
-        return null;
+        return this;
     }
 
     public void serveCard(Player p1, Deck deck) {
         p1.hitPlayer(deck);
     }
 
-    public void requestFold() {
-        this.folded = true;
+    public void requestFold(DeepLearner deep) {
+        if (deep == null) {
+            if ( (((new Random(System.currentTimeMillis())).nextInt(2) % 2) == 0)) {
+                this.folded = true;
+            }
+        } else {
+            if (!deep.getAnotherCard(this.cardScore())) this.folded = true;
+        }
     }
 
 }
