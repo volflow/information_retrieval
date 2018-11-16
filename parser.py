@@ -5,6 +5,7 @@ import re
 import os
 import json
 
+bookeeping_fp = './WEBPAGES_RAW/bookkeeping_short.json'
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
@@ -25,7 +26,12 @@ def parse(fn):
     metas = []
     for i in meta:
         if (i.get("name") in ["description", "keywords"]):
-            metas.append(i.get("content"))
+            content = i.get("content")
+            value = i.get("value")
+            if content is not None:
+                metas.append(content)
+            if value is not None:
+                metas.append(value)
 
     texts = soup.findAll(text=True)
     visible_texts = filter(tag_visible, texts)
@@ -42,6 +48,7 @@ def import_id_to_url(json_fp=bookeeping_fp):
     return id_to_url
 
 def build_index():
+    min_token_len = 3
     id_to_url = import_id_to_url(bookeeping_fp)
     index = Index(id_to_url=id_to_url)
 
@@ -51,23 +58,22 @@ def build_index():
 
         # map
         title,metadata,body = parse(fp)
-
         token_dict = {}
         for str_ in title:
-            tokens = tokenize(str_,3)
+            tokens = tokenize(str_,min_token_len)
             token_dict = insert_token_dict(tokens,type=0,dict_=token_dict)
         for str_ in metadata:
-            tokens = tokenize(str_,3)
+            tokens = tokenize(str_,min_token_len)
             token_dict = insert_token_dict(tokens,type=1,dict_=token_dict)
         for str_ in body:
-            tokens = tokenize(str_,3)
+            tokens = tokenize(str_,min_token_len)
             token_dict = insert_token_dict(tokens,type=2,dict_=token_dict)
 
         # reduce
-        for token,token_freq in token_dict.iteritems():
+        for token,token_freq in token_dict.items():
             index.add(doc_id,token,token_freq)
 
-        #print(doc_id,fp)
+        print(doc_id,fp)
 
     print('Calculating Scores...')
     index.update_scores()
@@ -81,13 +87,13 @@ def tokenize(s, min_len):
     s = re.findall('[a-zA-Z0-9]{%d}[a-zA-Z0-9]*' % min_len, s)
     return map(lambda x: x.lower(), s)  # make all tokens lowercase
 
-def insert_token_dict(tokens, dict_ = {}, type, count=True):
+def insert_token_dict(tokens, type, dict_ = {}, count=True):
     """
     type: 0 title | 1 metadata | 2 body
     """
     for t in tokens:
         t.lower()
-        dict_.setdefault(t, (0,0,0))
+        dict_.setdefault(t, [0,0,0])
         if count:
             dict_[t][type] += 1
     return dict_
@@ -112,27 +118,31 @@ class Index(object):
     def search(self,query):
         tokens = tokenize(query,min_len=3)
 
-        results = []
+        results = {}
         for token in tokens:
             if token in self.token_to_id_score:
                 found = self.token_to_id_score[token]
                 #scored = self.score(token,found)
-            results += found
-            break
+                for id,score in found:
+                    results.setdefault(id,[0,0])
+                    results[id][0] += 1
+                    results[id][1] += score
+
+        result = sorted(results.items(), key = lambda x : x[1],reverse=True)
 
         def add_urls(id_tuple):
             url = self.id_to_url[id_tuple[0]]
             return url, id_tuple
 
-        results = map(add_urls,results)
-        return results
+        result = map(add_urls,result)
+        return result
 
     def score(self,token):
         postings_list = self.token_to_id_metadata[token]
         idf = len(self.token_to_id_metadata[token])/len(self.id_to_url) # df/total_documents
 
         def tf_idf(x):
-            score = x[1] * idf
+            score = (5*x[1][0]+3*x[1][1]+2*x[1][2])/2 * idf
             return x[0], score#, x[1], idf#token,score
 
         scored_postings = list(map(tf_idf,postings_list))
