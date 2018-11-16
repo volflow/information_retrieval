@@ -1,24 +1,38 @@
 from lxml import html,etree
+from bs4 import BeautifulSoup
+from bs4.element import Comment
 import re
 import os
 
+def tag_visible(element):
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
 def parse(fn):
-    tree = html.parse(fn)
+    with open(fn) as f:
+        soup = BeautifulSoup(f, features="lxml")
 
-    text = []
-    for x in tree.getiterator():
-    #print(x.tag,x.text)
-        if x.tag not in ['script','style','img'] and type(x.tag) == str and type(x.text) == str:
-            #print('in:',x.tag,x.text)
-            text.append(x.text)
-        else:
-            pass
-            #print('ignored:',x.tag,x.text)
+    title = soup.findAll("title")
+    titles = []
+    for i in title:
+        titles.append(i.text)
 
-    return ' '.join(text) # TODO: make it wokt without join
+    meta = soup.findAll("meta")
+    metas = []
+    for i in meta:
+        if (i.get("name") in ["description", "keywords"]):
+            metas.append(i.get("content"))
 
-def import_bookeeping(fn):
-    
+    texts = soup.findAll(text=True)
+    visible_texts = filter(tag_visible, texts)
+    body_text = []
+    for i in visible_texts:
+        body_text.append(i)
+
+    return (titles, metas, body_text) # TODO: make it wokt without join
 
 def tokenize(s, min_len):
     # find all alpha numerical tokens of len  >= min_len
