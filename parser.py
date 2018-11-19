@@ -4,6 +4,7 @@ from bs4.element import Comment
 import re
 import os
 import json
+import math
 
 bookeeping_fp = './WEBPAGES_RAW/bookkeeping_short.json'
 def tag_visible(element):
@@ -88,14 +89,21 @@ def tokenize(s, min_len):
     return map(lambda x: x.lower(), s)  # make all tokens lowercase
 
 def insert_token_dict(tokens, type, dict_ = {}, count=True):
-    """
-    type: 0 title | 1 metadata | 2 body
-    """
-    for t in tokens:
-        t.lower()
-        dict_.setdefault(t, [0,0,0])
-        if count:
-            dict_[t][type] += 1
+    if type is not None:
+        """
+        type: 0 title | 1 metadata | 2 body
+        """
+        for t in tokens:
+            t.lower()
+            dict_.setdefault(t, [0,0,0])
+            if count:
+                dict_[t][type] += 1
+    else:
+        for t in tokens:
+            t.lower()
+            dict_.setdefault(t, 0)
+            if count:
+                dict_[t] += 1
     return dict_
 
 
@@ -117,9 +125,13 @@ class Index(object):
 
     def search(self,query):
         tokens = tokenize(query,min_len=3)
+        q_dict = insert_token_dict(tokens,type=None,count=True)
 
         results = {}
-        for token in tokens:
+        for token in q_dict:
+            # q_tf = 1+math.log(q_dict[token])
+            # q_idf = len(self.token_to_id_score[token])/len(self.id_to_url) # df/total_documents
+            # q_w = q_tf * q_idf
             if token in self.token_to_id_score:
                 found = self.token_to_id_score[token]
                 #scored = self.score(token,found)
@@ -137,17 +149,23 @@ class Index(object):
         result = map(add_urls,result)
         return result
 
-    def score(self,token):
+    def score(self,token,use_idf=True):
         postings_list = self.token_to_id_metadata[token]
-        idf = len(self.token_to_id_metadata[token])/len(self.id_to_url) # df/total_documents
+        if use_idf:
+            idf = len(self.token_to_id_metadata[token])/len(self.id_to_url) # df/total_documents
 
         def tf_idf(x):
-            score = (5*x[1][0]+3*x[1][1]+2*x[1][2])/2 * idf
+            # 2.5*title_freq+1.5*metadata_freq+1*body_freq
+            tf = 1 + math.log((5*x[1][0]+3*x[1][1]+2*x[1][2])/2)
+            if use_idf:
+                score = tf * idf
+            else:
+                score = tf
             return x[0], score#, x[1], idf#token,score
 
-        scored_postings = list(map(tf_idf,postings_list))
+        scored_postings = map(tf_idf,postings_list)
         # sort scored_postings
-        scored_postings.sort(key=lambda x: x[1], reverse=True)
+        scored_postings = sorted(scored_postings,key=lambda x: x[1], reverse=True)
 
         return scored_postings
 
