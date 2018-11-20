@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Index-search</title>
+  <meta name="description" content="Index-search">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+</head>
+
+<body>
+  <div class="container">
+    {% include 'header.html' %}
+
+   <!-- Begin page content -->
+   <div class="h-100">
+     <div class="row align-items-center justify-content-end h-100">
+         <div class="col-9 mx-auto">
+             <div class="jumbotron bg-white">
+                 <img width="85%" height="75%" class="ml-4" src="static/google2.0.0.jpg"/>
+                 <form class="form-inline col-12" action="/query" method="get" id="queryEntry">
+                   <div class="form-group col-11">
+                      <div class="input-group col-12">
+                          <input type="text" class="form-control" placeholder="Enter your query here..." id="queryEntryBox" name="queryEntryBox">
+                          <div class="input-group-append">
+                            <button type="submit" class="btn btn-primary">Go!</button>
+                          </div>
+                        </div>
+                      </div>
+                 </form>
+             </div>
+         </div>
+     </div>
+ </div>
+ </div>
+ {% include 'footer.html' %}
+</body>
+</html>
