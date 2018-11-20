@@ -1,0 +1,35 @@
+
+<!DOCTYPE HTML>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Index-search</title>
+  <meta name="description" content="Index-search">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+</head>
+
+<body>
+  <div class="container">
+    {% include 'header.html' %}
+   <div class="mt-4"></div>
+   <<input type="text" name="" value="">
+   {% for link in links %}
+    <div class="jumbotron border border-dark bg-white d-flex align-items-end m-0 p-0 mt-3">
+      <div class="col-12">
+        <div class="row col-12">
+          <a href="http://{{link[0]}}" class="lead"><strong>{{link[1][0]}}</strong></a>
+        </div>
+        <div class="row col-12">
+          <p class="text-success p-0 m-0 small">{{link[0]}}</p>
+        </div>
+        <div class="row col-12">
+          <p class="p-0 m-0">{{link[1][1]}}</p>
+        </div>
+      </div>
+    </div>
+   {% endfor %}
+   </div>
+ {% include 'footer.html' %}
+</body>
+</html>
