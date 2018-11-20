@@ -6,7 +6,8 @@ import os
 import json
 import math
 
-bookeeping_fp = './WEBPAGES_RAW/bookkeeping_short.json'
+bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
+corpus_fp = './WEBPAGES_RAW/'
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
@@ -55,7 +56,7 @@ def build_index():
 
     print('Parsing Documents...')
     for doc_id in id_to_url:
-        fp = './WEBPAGES_RAW/' + doc_id
+        fp = corpus_fp + doc_id
 
         # map
         title,metadata,body = parse(fp)
@@ -152,11 +153,11 @@ class Index(object):
     def score(self,token,use_idf=True):
         postings_list = self.token_to_id_metadata[token]
         if use_idf:
-            idf = len(self.token_to_id_metadata[token])/len(self.id_to_url) # df/total_documents
+            idf = math.log(len(self.id_to_url)/len(self.token_to_id_metadata[token]),10) # total_documents/df
 
         def tf_idf(x):
             # 2.5*title_freq+1.5*metadata_freq+1*body_freq
-            tf = 1 + math.log((5*x[1][0]+3*x[1][1]+2*x[1][2])/2)
+            tf = 1 + math.log((5*x[1][0]+3*x[1][1]+2*x[1][2])/2,10)
             if use_idf:
                 score = tf * idf
             else:
