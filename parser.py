@@ -8,6 +8,8 @@ import math
 
 bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
 corpus_fp = './WEBPAGES_RAW/'
+index_fp = './index_dump'
+
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
@@ -173,3 +175,11 @@ class Index(object):
     # def rank(self,id_tuple_lsit):
     #     'in-place ranking'
     #     id_tuple.sort(key=lambda x: x[1], reverse=True)
+
+if __name__ == '__main__':
+    print('Building index')
+
+    index = build_index()
+
+    with open(index_fp,'wb') as handle:
+        pickle.dump(index,handle)
