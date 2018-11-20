@@ -8,8 +8,8 @@ import json
 import math
 import pickle
 
-bookeeping_fp = './webpages/WEBPAGES_RAW/bookkeeping.json'
-corpus_fp = './webpages/WEBPAGES_RAW/'
+bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
+corpus_fp = './WEBPAGES_RAW/'
 index_fp = './index_dump'
 
 def tag_visible(element):
@@ -48,7 +48,7 @@ def parse(fn):
     return (titles, metas, body_text) # TODO: make it wokt without join
 
 def import_id_to_url(json_fp=bookeeping_fp):
-    with open(json_fp, encoding='utf-8', errors='ignore') as f:
+    with open(json_fp) as f:
         id_to_url = json.load(f)
 
     return id_to_url
@@ -182,6 +182,13 @@ index = ""
 @app.route('/')
 def hello_worldk():
     return render_template("google_but_better.html")
+
+@app.route('/forward')
+def forward():
+    #get query
+    queryName = "Hello"
+    links = (list(index.search(queryName)))
+    return render_template("query_page.html", links=links)
 
 @app.route('/query')
 def hello_world():
