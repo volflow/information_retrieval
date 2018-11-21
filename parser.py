@@ -1,3 +1,4 @@
+from flask import Flask, render_template, request
 from lxml import html,etree
 from bs4 import BeautifulSoup
 from bs4.element import Comment
@@ -5,9 +6,12 @@ import re
 import os
 import json
 import math
+import pickle
 
 bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
 corpus_fp = './WEBPAGES_RAW/'
+index_fp = './index_dump'
+
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
@@ -16,7 +20,7 @@ def tag_visible(element):
     return True
 
 def parse(fn):
-    with open(fn) as f:
+    with open(fn, encoding='utf-8', errors='ignore') as f:
         soup = BeautifulSoup(f, features="lxml")
 
     title = soup.findAll("title")
@@ -173,3 +177,44 @@ class Index(object):
     # def rank(self,id_tuple_lsit):
     #     'in-place ranking'
     #     id_tuple.sort(key=lambda x: x[1], reverse=True)
+app = Flask(__name__)
+index = ""
+@app.route('/')
+def hello_worldk():
+    return render_template("google_but_better.html")
+
+@app.route('/forward')
+def forward():
+    #get query
+    queryName = "Hello"
+    with open("history",'rb') as history_file:
+        history_list = pickle.load(history_file)
+        x = history_list[-1]
+    print(x)
+    links = (list(index.search(queryName)))
+    return render_template("query_page.html", links=links)
+
+@app.route('/query')
+def hello_world():
+    links = []
+    queryName = request.args["queryEntryBox"]
+    links = (list(index.search(queryName)))
+    with open("history",'rb') as history_file:
+        history_list = pickle.load(history_file)
+    history_list.append(queryName)
+    with open("history",'wb') as history_file:
+        pickle.dump(history_list, history_file)
+    return render_template("query_page.html", links=links)
+
+if __name__ == '__main__':
+    with open("index_dump", "rb") as f:
+        index = pickle.load(f)
+    with open("history",'wb') as history_file:
+        history_list = []
+        pickle.dump(history_list, history_file)
+    app.debug = True
+    app.run(host = '0.0.0.0',port=5000)
+    #print('Building index')
+    #index = build_index()
+    #with open(index_fp,'wb') as handle:
+        #pickle.dump(index,handle)
