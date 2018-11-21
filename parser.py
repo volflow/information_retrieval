@@ -4,11 +4,12 @@ from bs4 import BeautifulSoup
 from bs4.element import Comment
 import re
 import os
+import sys
 import json
 import math
 import pickle
 
-bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
+bookeeping_fp = './WEBPAGES_RAW/bookkeeping_short.json'
 corpus_fp = './WEBPAGES_RAW/'
 index_fp = './index_dump'
 
@@ -93,7 +94,10 @@ def tokenize(s, min_len):
     s = re.findall('[a-zA-Z0-9]{%d}[a-zA-Z0-9]*' % min_len, s)
     return map(lambda x: x.lower(), s)  # make all tokens lowercase
 
-def insert_token_dict(tokens, type, dict_ = {}, count=True):
+def insert_token_dict(tokens, type, dict_=None, count=True):
+
+    if dict_ is None:
+        dict_ = {}
     if type is not None:
         """
         type: 0 title | 1 metadata | 2 body
@@ -117,16 +121,32 @@ class Index(object):
         self.id_to_url = id_to_url
         self.token_to_id_metadata = token_to_id_metadata
         self.token_to_id_score = {}
+        self.doc_id_to_length = {}
 
     def add(self,doc_id,token,token_freq):
         self.token_to_id_metadata.setdefault(token, [])
         self.token_to_id_metadata[token].append((doc_id,token_freq))
 
     def update_scores(self):
+
+        # update and calculate tf-idf
         self.token_to_id_score = {}
         for token in self.token_to_id_metadata:
             id_score = self.score(token)
             self.token_to_id_score[token] = id_score
+
+        # calculate lenght of document vector i.e. l2-norm
+        # add all sqares of scores for each document
+        for token in self.token_to_id_score:
+            for doc_id,score in self.token_to_id_score[token]:
+                self.doc_id_to_length.setdefault(doc_id,0)
+                self.doc_id_to_length[doc_id] += score*score
+        # take sqrt for sum of squares each document
+        for doc_id in self.doc_id_to_length:
+            self.doc_id_to_length[doc_id] = math.sqrt(self.doc_id_to_length[doc_id])
+
+
+
 
     def search(self,query):
         tokens = tokenize(query,min_len=3)
@@ -145,7 +165,10 @@ class Index(object):
                     results[id][0] += 1
                     results[id][1] += score
 
-        result = sorted(results.items(), key = lambda x : x[1],reverse=True)
+        if len(results) == 0:
+            return []
+
+        result = sorted(results.items(), key = lambda x : x[1][1],reverse=True)
 
         def add_urls(id_tuple):
             url = self.id_to_url[id_tuple[0]]
@@ -160,8 +183,10 @@ class Index(object):
             idf = math.log(len(self.id_to_url)/len(self.token_to_id_metadata[token]),10) # total_documents/df
 
         def tf_idf(x):
+            # x = (doc_id, [title_freq,metadata_freq,body_freq])
             # 2.5*title_freq+1.5*metadata_freq+1*body_freq
-            tf = 1 + math.log((5*x[1][0]+3*x[1][1]+2*x[1][2])/2,10)
+            meta = x[1]
+            tf = 1 + math.log((5*meta[0]+3*meta[1]+2*meta[2])/2,10)
             if use_idf:
                 score = tf * idf
             else:
@@ -178,7 +203,7 @@ class Index(object):
     #     'in-place ranking'
     #     id_tuple.sort(key=lambda x: x[1], reverse=True)
 app = Flask(__name__)
-index = ""
+
 @app.route('/')
 def hello_worldk():
     return render_template("google_but_better.html")
@@ -198,6 +223,7 @@ def forward():
 def hello_world():
     links = []
     queryName = request.args["queryEntryBox"]
+    print("Received query:",queryName)
     links = (list(index.search(queryName)))
     with open("history",'rb') as history_file:
         history_list = pickle.load(history_file)
@@ -207,8 +233,18 @@ def hello_world():
     return render_template("query_page.html", links=links)
 
 if __name__ == '__main__':
-    with open("index_dump", "rb") as f:
-        index = pickle.load(f)
+    """
+        Useage: -b rebuilds index
+    """
+
+    if len(sys.argv)>1 and '-b' in sys.argv[1]:
+        index = build_index()
+        with open("index_dump", "wb") as f:
+            index = pickle.dump(index,f)
+    else:
+        with open("index_dump", "rb") as f:
+            index = pickle.load(f)
+
     with open("history",'wb') as history_file:
         history_list = []
         pickle.dump(history_list, history_file)
