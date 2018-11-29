@@ -219,18 +219,32 @@ def forward():
     links = (list(index.search(queryName)))
     return render_template("query_page.html", links=links)
 
-@app.route('/query')
-def hello_world():
+@app.route('/query/<int:elems>')
+def hello_world(elems):
     links = []
     queryName = request.args["queryEntryBox"]
     print("Received query:",queryName)
     links = (list(index.search(queryName)))
+
+    ceiling = int(round(len(links)/10))
+
+    if (ceiling > 15):
+        ceiling = 15
+
+    links_remaining = len(links) - elems
+
+    if ( links_remaining < 10):
+        links = [links[i] for i in range(elems, elems+links_remaining)]
+    else:
+        links = [links[i] for i in range(elems, elems+10)]
+
     with open("history",'rb') as history_file:
         history_list = pickle.load(history_file)
     history_list.append(queryName)
     with open("history",'wb') as history_file:
         pickle.dump(history_list, history_file)
-    return render_template("query_page.html", links=links)
+
+    return render_template("query_page.html", links=links, pages=[i for i in range(0, ceiling)], query=queryName)
 
 if __name__ == '__main__':
     """
