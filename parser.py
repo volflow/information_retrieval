@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 from lxml import html,etree
 from bs4 import BeautifulSoup
 from bs4.element import Comment
+from nltk.stem.snowball import SnowballStemmer
 import re
 import os
 import sys
@@ -55,7 +56,8 @@ def import_id_to_url(json_fp=bookeeping_fp):
     return id_to_url
 
 def build_index():
-    min_token_len = 3
+    min_token_len = 1
+    stemmer = SnowballStemmer("english")
     id_to_url = import_id_to_url(bookeeping_fp)
     index = Index(id_to_url=id_to_url)
 
@@ -66,18 +68,20 @@ def build_index():
         # map
         title,metadata,body = parse(fp)
         token_dict = {}
-        for str_ in title:
-            tokens = tokenize(str_,min_token_len)
-            token_dict = insert_token_dict(tokens,type=0,dict_=token_dict)
-        for str_ in metadata:
-            tokens = tokenize(str_,min_token_len)
-            token_dict = insert_token_dict(tokens,type=1,dict_=token_dict)
-        for str_ in body:
-            tokens = tokenize(str_,min_token_len)
-            token_dict = insert_token_dict(tokens,type=2,dict_=token_dict)
+        for type, loc in enumerate([title,metadata,body]):
+            for str_ in loc:
+                tokens = tokenize(str_,min_token_len,stemmer=stemmer)
+                token_dict = insert_token_dict(tokens,type=type,dict_=token_dict)
+        # for str_ in metadata:
+        #     tokens = tokenize(str_,min_token_len,stemmer=stemmer)
+        #     token_dict = insert_token_dict(tokens,type=1,dict_=token_dict)
+        # for str_ in body:
+        #     tokens = tokenize(str_,min_token_len,stemmer=stemmer)
+        #     token_dict = insert_token_dict(tokens,type=2,dict_=token_dict)
 
         # reduce
         for token,token_freq in token_dict.items():
+            # token_freq is tupel of the frequencies in (title, metadata, body)
             index.add(doc_id,token,token_freq)
 
         print(doc_id,fp)
@@ -89,10 +93,10 @@ def build_index():
     return index
 
 
-def tokenize(s, min_len):
+def tokenize(s, min_len=1, stemmer=SnowballStemmer("english")):
     # find all alpha numerical tokens of len  >= min_len
     s = re.findall('[a-zA-Z0-9]{%d}[a-zA-Z0-9]*' % min_len, s)
-    return map(lambda x: x.lower(), s)  # make all tokens lowercase
+    return list(map(lambda x: stemmer.stem(x.lower()), s))
 
 def insert_token_dict(tokens, type, dict_=None, count=True):
 
@@ -109,6 +113,7 @@ def insert_token_dict(tokens, type, dict_=None, count=True):
                 dict_[t][type] += 1
     else:
         for t in tokens:
+            print(t)
             t.lower()
             dict_.setdefault(t, 0)
             if count:
@@ -145,15 +150,17 @@ class Index(object):
         for doc_id in self.doc_id_to_length:
             self.doc_id_to_length[doc_id] = math.sqrt(self.doc_id_to_length[doc_id])
 
-
-
-
     def search(self,query):
-        tokens = tokenize(query,min_len=3)
+        tokens = tokenize(query,min_len=1,stemmer=SnowballStemmer("english"))
+        #print(list(tokens))
         q_dict = insert_token_dict(tokens,type=None,count=True)
+        print('test')
+        print(q_dict)
+        print(insert_token_dict(list(tokens),type=None,count=True))
 
         results = {}
         for token in q_dict:
+            print(token, token in self.token_to_id_score)
             # q_tf = 1+math.log(q_dict[token])
             # q_idf = len(self.token_to_id_score[token])/len(self.id_to_url) # df/total_documents
             # q_w = q_tf * q_idf
@@ -166,6 +173,7 @@ class Index(object):
                     results[id][1] += score
 
         if len(results) == 0:
+            print('No matching documents')
             return []
 
         result = sorted(results.items(), key = lambda x : x[1][1],reverse=True)
@@ -174,7 +182,7 @@ class Index(object):
             url = self.id_to_url[id_tuple[0]]
             return url, id_tuple
 
-        result = map(add_urls,result)
+        result = list(map(add_urls,result))
         return result
 
     def score(self,token,use_idf=True):
@@ -193,7 +201,7 @@ class Index(object):
                 score = tf
             return x[0], score#, x[1], idf#token,score
 
-        scored_postings = map(tf_idf,postings_list)
+        scored_postings = list(map(tf_idf,postings_list))
         # sort scored_postings
         scored_postings = sorted(scored_postings,key=lambda x: x[1], reverse=True)
 
