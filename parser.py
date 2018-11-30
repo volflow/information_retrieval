@@ -9,7 +9,7 @@ import json
 import math
 import pickle
 
-bookeeping_fp = './WEBPAGES_RAW/bookkeeping_short.json'
+bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
 corpus_fp = './WEBPAGES_RAW/'
 index_fp = './index_dump'
 
@@ -65,6 +65,7 @@ def build_index():
 
         # map
         title,metadata,body = parse(fp)
+        intro_text = ""
         token_dict = {}
         for str_ in title:
             tokens = tokenize(str_,min_token_len)
@@ -74,6 +75,11 @@ def build_index():
             token_dict = insert_token_dict(tokens,type=1,dict_=token_dict)
         for str_ in body:
             tokens = tokenize(str_,min_token_len)
+            try:
+                print((tokens)[0])
+                intro_text = intro_text + list(tokens)[0]
+            except:
+                pass
             token_dict = insert_token_dict(tokens,type=2,dict_=token_dict)
 
         # reduce
@@ -81,6 +87,11 @@ def build_index():
             index.add(doc_id,token,token_freq)
 
         print(doc_id,fp)
+
+        if (title == []):
+            title = "(No Title)"
+        index.id_to_url[doc_id] = (index.id_to_url[doc_id], title, intro_text[0:10])
+
 
     print('Calculating Scores...')
     index.update_scores()
@@ -171,8 +182,8 @@ class Index(object):
         result = sorted(results.items(), key = lambda x : x[1][1],reverse=True)
 
         def add_urls(id_tuple):
-            url = self.id_to_url[id_tuple[0]]
-            return url, id_tuple
+            url, title, body = self.id_to_url[id_tuple[0]]
+            return url, id_tuple, title, body
 
         result = map(add_urls,result)
         return result
@@ -215,7 +226,6 @@ def forward():
     with open("history",'rb') as history_file:
         history_list = pickle.load(history_file)
         x = history_list[-1]
-    print(x)
     links = (list(index.search(queryName)))
     return render_template("query_page.html", links=links)
 
@@ -225,7 +235,6 @@ def hello_world(elems):
     queryName = request.args["queryEntryBox"]
     print("Received query:",queryName)
     links = (list(index.search(queryName)))
-
     ceiling = int(round(len(links)/10))
 
     if (ceiling > 15):
@@ -244,6 +253,7 @@ def hello_world(elems):
     with open("history",'wb') as history_file:
         pickle.dump(history_list, history_file)
 
+    #print(links)
     return render_template("query_page.html", links=links, pages=[i for i in range(0, ceiling)], query=queryName)
 
 if __name__ == '__main__':
@@ -264,7 +274,9 @@ if __name__ == '__main__':
         pickle.dump(history_list, history_file)
     app.debug = True
     app.run(host = '0.0.0.0',port=5000)
-    #print('Building index')
-    #index = build_index()
-    #with open(index_fp,'wb') as handle:
-        #pickle.dump(index,handle)
+    '''
+    print('Building index')
+    index = build_index()
+    with open(index_fp,'wb') as handle:
+        pickle.dump(index,handle)
+    '''
