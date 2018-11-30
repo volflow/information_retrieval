@@ -18,17 +18,24 @@
     <div class="jumbotron border border-dark bg-white d-flex align-items-end m-0 p-0 mt-3">
       <div class="col-12">
         <div class="row col-12">
-          <a href="http://{{link[0]}}" class="lead"><strong>{{link[1][0]}}</strong></a>
+          <a href="http://{{link[0]}}" class="lead"><strong>{{link[2][0]}}</strong></a>
         </div>
         <div class="row col-12">
           <p class="text-success p-0 m-0 small">{{link[0]}}</p>
         </div>
         <div class="row col-12">
-          <p class="p-0 m-0">{{link[1][1]}}</p>
+          <p class="p-0 m-0">{{link[3][0]}}</p>
         </div>
       </div>
     </div>
    {% endfor %}
+   <nav aria-label="Page navigation example" class="mt-3 mb-5 d-flex justify-content-center">
+     <ul class="pagination">
+       {% for i in pages %}
+        <li class="page-item"><a class="page-link" href="/query/{{i}}?queryEntryBox={{query}}">{{i}}</a></li>
+       {% endfor %}
+     </ul>
+   </nav>
    </div>
  {% include 'footer.html' %}
 </body>
