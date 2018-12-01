@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 from lxml import html,etree
 from bs4 import BeautifulSoup
 from bs4.element import Comment
@@ -9,6 +9,7 @@ import sys
 import json
 import math
 import pickle
+import time
 
 bookeeping_fp = './WEBPAGES_RAW/bookkeeping.json'
 corpus_fp = './WEBPAGES_RAW/'
@@ -77,13 +78,19 @@ def build_index():
             tokens = tokenize(str_,min_token_len)
             token_dict = insert_token_dict(tokens,type=1,dict_=token_dict)
         for str_ in body:
+
+            if len(intro_text)<76:
+                txt = ' '.join(str_.split())
+                if txt:
+                    intro_text += ' ' + txt
             tokens = tokenize(str_,min_token_len)
-            try:
-                print((tokens)[0])
-                intro_text = intro_text + tokens[0]
-            except Exception as ex:
-                print(ex)
-                pass
+            # try:
+            #     if tokens:
+            #         print(tokens)
+            #         #intro_text = intro_text + tokens[0]
+            # except Exception as ex:
+            #     print(ex)
+            #     pass
             token_dict = insert_token_dict(tokens,type=2,dict_=token_dict)
 
         # reduce
@@ -93,9 +100,7 @@ def build_index():
 
         print(doc_id,fp)
 
-        if (title == []):
-            title = "(No Title)"
-        index.id_to_url[doc_id] = (index.id_to_url[doc_id], title, intro_text[0:10])
+        index.id_to_url[doc_id] = (index.id_to_url[doc_id], title, intro_text[1:76])
 
 
     print('Calculating Scores...')
@@ -125,7 +130,6 @@ def insert_token_dict(tokens, type, dict_=None, count=True):
                 dict_[t][type] += 1
     else:
         for t in tokens:
-            print(t)
             t.lower()
             dict_.setdefault(t, 0)
             if count:
@@ -164,15 +168,11 @@ class Index(object):
 
     def search(self,query):
         tokens = tokenize(query,min_len=1,stemmer=SnowballStemmer("english"))
-        #print(list(tokens))
+        print('Stemmed query:',list(tokens))
         q_dict = insert_token_dict(tokens,type=None,count=True)
-        print('test')
-        print(q_dict)
-        print(insert_token_dict(list(tokens),type=None,count=True))
 
         results = {}
         for token in q_dict:
-            print(token, token in self.token_to_id_score)
             # q_tf = 1+math.log(q_dict[token])
             # q_idf = len(self.token_to_id_score[token])/len(self.id_to_url) # df/total_documents
             # q_w = q_tf * q_idf
@@ -191,8 +191,11 @@ class Index(object):
         result = sorted(results.items(), key = lambda x : x[1][1],reverse=True)
 
         def add_urls(id_tuple):
-            url, title, body = self.id_to_url[id_tuple[0]]
-            return url, id_tuple, title, body
+            url, title, intro_text = self.id_to_url[id_tuple[0]]
+            if (title == [] or title == ['']):
+                print(title)
+                title = ["(No Title)"]
+            return url, id_tuple, title, intro_text
 
         result = list(map(add_urls,result))
         return result
@@ -206,7 +209,8 @@ class Index(object):
             # x = (doc_id, [title_freq,metadata_freq,body_freq])
             # 2.5*title_freq+1.5*metadata_freq+1*body_freq
             meta = x[1]
-            tf = 1 + math.log((5*meta[0]+3*meta[1]+2*meta[2])/2,10)
+            title,metdataf,bodyf = meta[0],meta[1],meta[2]
+            tf = 1 + math.log((5*titlef+3*metdataf+2*bodyf)/2,10)
             if use_idf:
                 score = tf * idf
             else:
@@ -225,25 +229,43 @@ class Index(object):
 app = Flask(__name__)
 
 @app.route('/')
-def hello_worldk():
+def home_dir():
     return render_template("google_but_better.html")
 
 @app.route('/forward')
 def forward():
     #get query
-    queryName = "Hello"
     with open("history",'rb') as history_file:
-        history_list = pickle.load(history_file)
-        x = history_list[-1]
-    links = (list(index.search(queryName)))
-    return render_template("query_page.html", links=links)
+        last = pickle.load(history_file)[-1]
+    print(last)
+
+    return query_result_page(last,0)
+
+
 
 @app.route('/query/<int:elems>')
-def hello_world(elems):
+def query(elems):
     links = []
     queryName = request.args["queryEntryBox"]
     print("Received query:",queryName)
+    if queryName=='':
+        return redirect('/')
+
+
+
+    with open("history",'rb') as history_file:
+        history_list = pickle.load(history_file)
+    history_list.append(queryName)
+    with open("history",'wb') as history_file:
+        pickle.dump(history_list, history_file)
+
+    return query_result_page(queryName,elems)
+
+def query_result_page(queryName, elems):
+
+    start_time = time.time()
     links = (list(index.search(queryName)))
+    total_size = len(links)
     ceiling = int(round(len(links)/10))
 
     if (ceiling > 15):
@@ -256,14 +278,14 @@ def hello_world(elems):
     else:
         links = [links[i] for i in range(elems, elems+10)]
 
-    with open("history",'rb') as history_file:
-        history_list = pickle.load(history_file)
-    history_list.append(queryName)
-    with open("history",'wb') as history_file:
-        pickle.dump(history_list, history_file)
-
     #print(links)
-    return render_template("query_page.html", links=links, pages=[i for i in range(0, ceiling)], query=queryName)
+    running_time = time.time() - start_time
+    return render_template("query_page.html",
+                links=links,
+                pages=[i for i in range(0, ceiling)],
+                query=queryName,
+                running_time=running_time,
+                link_size=total_size)
 
 if __name__ == '__main__':
     """
@@ -273,19 +295,20 @@ if __name__ == '__main__':
     if len(sys.argv)>1 and '-b' in sys.argv[1]:
         index = build_index()
         with open("index_dump", "wb") as f:
-            index = pickle.dump(index,f)
+            pickle.dump(index,f)
+
     else:
         with open("index_dump", "rb") as f:
             index = pickle.load(f)
 
-    with open("history",'wb') as history_file:
-        history_list = []
-        pickle.dump(history_list, history_file)
-    app.debug = True
-    app.run(host = '0.0.0.0',port=5000)
-    '''
-    print('Building index')
-    index = build_index()
-    with open(index_fp,'wb') as handle:
-        pickle.dump(index,handle)
-    '''
+        with open("history",'wb') as history_file:
+            history_list = []
+            pickle.dump(history_list, history_file)
+        app.debug = True
+        app.run(host = '0.0.0.0',port=5000)
+        '''
+        print('Building index')
+        index = build_index()
+        with open(index_fp,'wb') as handle:
+            pickle.dump(index,handle)
+        '''

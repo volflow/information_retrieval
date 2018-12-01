@@ -14,17 +14,18 @@
     {% include 'header.html' %}
    <div class="mt-4"></div>
    <<input type="text" name="" value="">
+   <p class="display-5 mt-4">Retrieved {{link_size}} results in {{'%0.5f'| format(running_time)}}s</p>
    {% for link in links %}
     <div class="jumbotron border border-dark bg-white d-flex align-items-end m-0 p-0 mt-3">
       <div class="col-12">
         <div class="row col-12">
-          <a href="http://{{link[0]}}" class="lead"><strong>{{link[2][0]}}</strong></a>
+          <a href="http://{{link[0]}}" class="lead"><strong>{{link[2][0]}} - score: </strong>{{'%0.2f'| format(link[1][1][1])}}</a>
         </div>
         <div class="row col-12">
           <p class="text-success p-0 m-0 small">{{link[0]}}</p>
         </div>
         <div class="row col-12">
-          <p class="p-0 m-0">{{link[3][0]}}</p>
+          <p class="p-0 m-0">{{link[3]}}...</p>
         </div>
       </div>
     </div>
